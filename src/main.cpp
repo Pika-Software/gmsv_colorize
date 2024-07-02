@@ -100,11 +100,31 @@ void HookDevWarning(void (*DevWarning1)(PRINTF_FORMAT_STRING const tchar* pMsg, 
     g_DevWarning2Hook.Enable();
 }
 
-void ColorizedConColorMsg(const Color& color, const tchar* pMsg, ...) {
+void ColorizedConColorMsg1(const Color& color, const tchar* pMsg, ...) {
     FORMAT_STRING(pMsg);
-    Msg("\033[38;2;%d;%d;%dm%s\x1b[0m", color.r(), color.b(), color.g(), buf.data());
+    ConMsg("\033[38;2;%d;%d;%dm%s\x1b[0m", color.r(), color.b(), color.g(), buf.data());
 }
-Detouring::Hook g_ConColorMsg;
+Detouring::Hook g_ConColorMsg1;
+
+void HookConColorMsg1(void (*ConColorMsg)(const Color& color, const tchar* pMsg, ...)) {
+    g_ConColorMsg1.Create(reinterpret_cast<void*>(ConColorMsg), reinterpret_cast<void*>(&ColorizedConColorMsg1));
+    g_ConColorMsg1.Enable();
+
+}
+
+#if defined ARCHITECTURE_X86
+void ColorizedConColorMsg2(int level, const Color& color, const tchar* pMsg, ...) {
+    FORMAT_STRING(pMsg);
+    ConMsg(level, "\033[38;2;%d;%d;%dm%s\x1b[0m", color.r(), color.b(), color.g(), buf.data());
+}
+Detouring::Hook g_ConColorMsg2;
+
+void HookConColorMsg2(void (*ConColorMsg)(int level, const Color& color, const tchar* pMsg, ...)) {
+    g_ConColorMsg2.Create(reinterpret_cast<void*>(ConColorMsg), reinterpret_cast<void*>(&ColorizedConColorMsg2));
+    g_ConColorMsg2.Enable();
+}
+
+#endif
 
 void CreditMessage() {
     std::string_view message = "colorized B)";
@@ -143,8 +163,11 @@ void Initialize(GarrysMod::Lua::CLuaInterface* LUA) {
 
     HookDevWarning(&DevWarning, &DevWarning);
 
-    g_ConColorMsg.Create(reinterpret_cast<void*>(&ConColorMsg), reinterpret_cast<void*>(&ColorizedConColorMsg));
-    g_ConColorMsg.Enable();
+    HookConColorMsg1(&ConColorMsg);
+
+#if defined ARCHITECTURE_X86
+    HookConColorMsg2(&ConColorMsg);
+#endif
 
 #if defined PLATFORM_WINDOWS
     // Enable ANSI escape codes
@@ -167,10 +190,12 @@ void Deinitialize(GarrysMod::Lua::CLuaInterface* LUA) {
     g_DevWarning1Hook.Destroy();
     g_DevWarning2Hook.Disable();
     g_DevWarning2Hook.Destroy();
-    g_ConColorMsg.Disable();
-    g_ConColorMsg.Destroy();
     g_LuaGameCallbackProxy.reset();
 
+#if defined ARCHITECTURE_X86
+    g_ConColorMsg2.Disable();
+    g_ConColorMsg2.Destroy();
+#endif
 }
 
 GMOD_MODULE_OPEN() {

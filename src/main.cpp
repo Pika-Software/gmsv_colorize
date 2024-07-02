@@ -155,8 +155,20 @@ void CreditMessage() {
 void Initialize(GarrysMod::Lua::CLuaInterface* LUA) {
     if (!LUA->IsServer()) return;
 
-    g_LuaGameCallbackProxy = std::make_unique<LuaGameCallbackProxy>(LUA->GetLuaGameCallback());
+    // Make sure if we are running dedicated server
+    LUA->GetField(GarrysMod::Lua::INDEX_GLOBAL, "game");
+    LUA->GetField(-1, "IsDedicated");
+    if (LUA->PCall(0, 1, 0) != 0) {
+        LUA->Pop(1);
+        LUA->PushBool(false);
+    }
+    if (LUA->GetBool(-1) == false) {
+        Msg("gmsv_colorize only works on dedicated servers :p\n");
+        return;
+    }
+    LUA->Pop(2);
 
+    g_LuaGameCallbackProxy = std::make_unique<LuaGameCallbackProxy>(LUA->GetLuaGameCallback());
 
     g_WarningHook.Create(reinterpret_cast<void*>(&Warning), reinterpret_cast<void*>(&ColorizedWarning));
     g_WarningHook.Enable();

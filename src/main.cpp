@@ -12,6 +12,10 @@
 #include <Windows.h>
 #endif
 
+#if defined ARCHITECTURE_X86
+#include <Color.h>
+#endif
+
 class LuaGameCallbackProxy : public Detouring::ClassProxy<GarrysMod::Lua::ILuaGameCallback, LuaGameCallbackProxy> {
 public:
     LuaGameCallbackProxy(GarrysMod::Lua::ILuaGameCallback* callback) {
@@ -30,8 +34,6 @@ public:
     }
 
     virtual void Msg(const char* msg, bool useless) {
-        //MsgColour(msg, Color(156, 241, 255));
-        //::Msg("\x1b[0m");
         ::Msg("\x1b[96m%s\x1b[0m", msg);
 
     }
